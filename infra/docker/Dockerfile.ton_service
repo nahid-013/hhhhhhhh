@@ -1,0 +1,13 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Установка зависимостей с кешированием pip
+RUN pip install --upgrade pip && \
+    pip install fastapi uvicorn[standard] pydantic
+
+# Копируем код
+COPY services/ton_service /app
+
+# Запуск сервиса
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]

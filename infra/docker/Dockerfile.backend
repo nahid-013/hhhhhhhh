@@ -1,0 +1,70 @@
+# syntax=docker/dockerfile:1.4
+# ==============================================
+# Stage 1: Builder - Сборка зависимостей
+# ==============================================
+FROM python:3.11-slim-bookworm AS builder
+
+# Установка системных зависимостей с кешированием apt
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Создание виртуального окружения
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Копирование только requirements (для кеширования слоя)
+COPY backend/requirements.prod.txt /tmp/requirements.txt
+
+# Установка зависимостей с максимальным кешированием
+# Использование готовых wheels значительно ускоряет сборку
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip setuptools wheel && \
+    pip install --no-compile -r /tmp/requirements.txt
+
+# ==============================================
+# Stage 2: Runtime - Финальный образ
+# ==============================================
+FROM python:3.11-slim-bookworm
+
+# Runtime зависимости с кешированием
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    postgresql-client \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Переменные окружения
+ENV PYTHONPATH=/app \
+    PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+# Копирование venv из builder
+COPY --from=builder /opt/venv /opt/venv
+
+# Копирование entrypoint
+COPY infra/docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Создание директорий
+RUN mkdir -p /app/uploads
+
+# Копирование кода (в dev режиме будет монтироваться через volume)
+COPY backend/ /app/backend/
+
+# Компиляция Python файлов (опционально, ускоряет запуск)
+RUN python -m compileall -q /app/backend || true
+
+EXPOSE 8000
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

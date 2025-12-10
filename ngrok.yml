@@ -1,0 +1,25 @@
+version: "2"
+
+tunnels:
+  backend:
+    proto: http
+    addr: backend:8000
+    inspect: true
+    schemes:
+      - https
+    # Раскомментируйте для фиксированного домена (требует ngrok paid plan)
+    # domain: your-custom-domain.ngrok-free.app
+
+  nft-service:
+    proto: http
+    addr: ton_service:8001
+    inspect: true
+    schemes:
+      - https
+
+# Web interface для мониторинга туннелей
+web_addr: 0.0.0.0:4040
+
+# Логирование
+log_level: info
+log_format: json
