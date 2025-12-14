@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Element {
+  AIR
+  WATER
+  EARTH
+  LIGHTNING
+  FOREST
+}
+
+enum Rarity {
+  COMMON
+  RARE
+  EPIC
+  LEGENDARY
+  MYTHIC
+}
+
+model Player {
+  id        String   @id @default(uuid())
+  telegramId String? @unique
+  walletAddress String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  spirits   PlayerSpirit[]
+  ownedSpirits Spirit[]
+}
+
+model SpiritTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  element     Element
+  rarity      Rarity
+  generation  Int      @default(1)
+  baseManeuver Int
+  baseImpulse Int
+  baseFluidity Int
+  baseDepth Int
+  baseReaction Int
+  baseFlow Int
+  perk        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  spirits     Spirit[]
+}
+
+model Spirit {
+  id          String   @id @default(uuid())
+  templateId  String
+  template    SpiritTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  ownerId     String?
+  owner       Player?  @relation(fields: [ownerId], references: [id])
+  level       Int      @default(1)
+  xp          Int      @default(0)
+  hunger      Int      @default(100)
+  energy      Int      @default(100)
+  maxEnergy   Int      @default(100)
+  maneuver    Int
+  impulse     Int
+  fluidity    Int
+  depth       Int
+  reaction    Int
+  flow        Int
+  nftTokenId  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  playerSpirits PlayerSpirit[]
+}
+
+model PlayerSpirit {
+  id        String   @id @default(uuid())
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id])
+  spiritId  String
+  spirit    Spirit   @relation(fields: [spiritId], references: [id])
+  slotIndex Int?
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([playerId, spiritId])
+  @@index([playerId])
+  @@index([spiritId])
+}
