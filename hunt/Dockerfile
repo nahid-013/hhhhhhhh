@@ -5,13 +5,13 @@ WORKDIR /app
 
 FROM base AS deps
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npx prisma generate
-RUN npm run build
+RUN --mount=type=cache,target=/root/.npm npx prisma generate
+RUN --mount=type=cache,target=/app/.next/cache npm run build
 
 FROM base AS runner
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
