@@ -24,6 +24,11 @@ type Spirit = {
   templateId: string
   template: SpiritTemplate
   ownerId?: string
+  owner?: {
+    id: string
+    telegramId?: string
+    walletAddress?: string
+  }
   level: number
   xp: number
   hunger: number
@@ -67,7 +72,6 @@ export default function AdminPage() {
   const [showSpiritFilters, setShowSpiritFilters] = useState(false)
   const [spiritNameFilter, setSpiritNameFilter] = useState('')
   const [spiritElementFilter, setSpiritElementFilter] = useState('')
-  const [spiritOwnerFilter, setSpiritOwnerFilter] = useState('')
   const [spiritSort, setSpiritSort] = useState<'name' | 'level' | 'energy'>('level')
   const [spiritSortDir, setSpiritSortDir] = useState<'asc' | 'desc'>('desc')
   
@@ -324,10 +328,7 @@ export default function AdminPage() {
   const filteredSpirits = spirits
     .filter(s => 
       s.template.name.toLowerCase().includes(spiritNameFilter.toLowerCase()) &&
-      s.template.element.toLowerCase().includes(spiritElementFilter.toLowerCase()) &&
-      (spiritOwnerFilter === '' || 
-        (spiritOwnerFilter === 'none' && !s.ownerId) ||
-        (spiritOwnerFilter === 'has' && s.ownerId))
+      s.template.element.toLowerCase().includes(spiritElementFilter.toLowerCase())
     )
     .sort((a, b) => {
       let aVal: any, bVal: any
@@ -347,8 +348,8 @@ export default function AdminPage() {
 
   const filteredPlayers = players
     .filter(p => 
-      (p.telegramId?.toLowerCase().includes(playerTelegramFilter.toLowerCase()) ?? true) &&
-      (p.walletAddress?.toLowerCase().includes(playerWalletFilter.toLowerCase()) ?? true)
+      (playerTelegramFilter === '' || p.telegramId?.toLowerCase().includes(playerTelegramFilter.toLowerCase())) &&
+      (playerWalletFilter === '' || p.walletAddress?.toLowerCase().includes(playerWalletFilter.toLowerCase()))
     )
 
   const toggleTemplateSort = (key: keyof SpiritTemplate) => {
@@ -769,7 +770,7 @@ export default function AdminPage() {
 
             {showSpiritFilters && (
               <div className="mb-4 p-3 bg-white rounded shadow">
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium mb-1">Название</label>
                     <input
@@ -793,18 +794,6 @@ export default function AdminPage() {
                       <option value="EARTH">EARTH</option>
                       <option value="LIGHTNING">LIGHTNING</option>
                       <option value="FOREST">FOREST</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium mb-1">Владелец</label>
-                    <select
-                      value={spiritOwnerFilter}
-                      onChange={(e) => setSpiritOwnerFilter(e.target.value)}
-                      className="w-full p-1 border rounded text-sm"
-                    >
-                      <option value="">Все</option>
-                      <option value="none">Без владельца</option>
-                      <option value="has">С владельцем</option>
                     </select>
                   </div>
                 </div>
@@ -842,7 +831,7 @@ export default function AdminPage() {
                       <td className="p-3 text-xs">
                         М{spirit.maneuver} И{spirit.impulse} Т{spirit.fluidity} Г{spirit.depth} Р{spirit.reaction} П{spirit.flow}
                       </td>
-                      <td className="p-3 text-xs">{spirit.ownerId || '-'}</td>
+                      <td className="p-3 text-sm">{spirit.owner?.telegramId || '-'}</td>
                       <td className="p-3 text-right">
                         <div className="flex gap-2 justify-end">
                           <button
@@ -949,7 +938,6 @@ export default function AdminPage() {
               <table className="w-full">
                 <thead className="bg-gray-100 border-b">
                   <tr>
-                    <th className="p-3 text-left">ID</th>
                     <th className="p-3 text-left">Telegram ID</th>
                     <th className="p-3 text-left">Кошелёк</th>
                     <th className="p-3 text-right">Действия</th>
@@ -958,7 +946,6 @@ export default function AdminPage() {
                 <tbody>
                   {filteredPlayers.map((player) => (
                     <tr key={player.id} className="border-b hover:bg-gray-50">
-                      <td className="p-3 font-mono text-xs">{player.id}</td>
                       <td className="p-3">{player.telegramId || '-'}</td>
                       <td className="p-3 font-mono text-xs">{player.walletAddress || '-'}</td>
                       <td className="p-3 text-right">
