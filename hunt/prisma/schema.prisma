@@ -27,6 +27,9 @@ model Player {
   id        String   @id @default(uuid())
   telegramId String? @unique
   walletAddress String?
+  isBanned  Boolean  @default(false)
+  bannedAt  DateTime?
+  banReason String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   spirits   PlayerSpirit[]
