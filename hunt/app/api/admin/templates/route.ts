@@ -31,7 +31,6 @@ export async function POST(request: NextRequest) {
       baseDepth,
       baseReaction,
       baseFlow,
-      perk,
     } = body
 
     if (!name || !element || !rarity) {
@@ -53,7 +52,6 @@ export async function POST(request: NextRequest) {
         baseDepth: baseDepth || 10,
         baseReaction: baseReaction || 10,
         baseFlow: baseFlow || 10,
-        perk,
       },
     })
 
