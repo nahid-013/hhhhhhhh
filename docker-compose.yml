@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hunt-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-hunt}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hunt-network
+
+  hunt-app:
+    build:
+      context: ./hunt
+      dockerfile: Dockerfile
+    container_name: hunt-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-hunt}
+      GAMES_SERVICE_URL: http://games-service:9000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - hunt-network
+
+  games-service:
+    build:
+      context: .
+      dockerfile: games/Dockerfile
+    container_name: hunt-games
+    restart: unless-stopped
+    ports:
+      - "${GAMES_PORT:-9000}:9000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-hunt}
+      PORT: 9000
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - hunt-network
+
+volumes:
+  postgres_data:
+
+networks:
+  hunt-network:
+    driver: bridge

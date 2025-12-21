@@ -46,6 +46,9 @@ type Player = {
   id: string
   telegramId?: string
   walletAddress?: string
+  isBanned: boolean
+  bannedAt?: string
+  banReason?: string
 }
 
 export default function AdminPage() {
@@ -61,23 +64,8 @@ export default function AdminPage() {
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)
   const [selectedPlayer, setSelectedPlayer] = useState<string>('')
   const [selectedSpirit, setSelectedSpirit] = useState<string>('')
-  
-  const [showTemplateFilters, setShowTemplateFilters] = useState(false)
-  const [templateNameFilter, setTemplateNameFilter] = useState('')
-  const [templateElementFilter, setTemplateElementFilter] = useState('')
-  const [templateRarityFilter, setTemplateRarityFilter] = useState('')
-  const [templateSort, setTemplateSort] = useState<keyof SpiritTemplate>('name')
-  const [templateSortDir, setTemplateSortDir] = useState<'asc' | 'desc'>('asc')
-  
-  const [showSpiritFilters, setShowSpiritFilters] = useState(false)
-  const [spiritNameFilter, setSpiritNameFilter] = useState('')
-  const [spiritElementFilter, setSpiritElementFilter] = useState('')
-  const [spiritSort, setSpiritSort] = useState<'name' | 'level' | 'energy'>('level')
-  const [spiritSortDir, setSpiritSortDir] = useState<'asc' | 'desc'>('desc')
-  
-  const [showPlayerFilters, setShowPlayerFilters] = useState(false)
-  const [playerTelegramFilter, setPlayerTelegramFilter] = useState('')
-  const [playerWalletFilter, setPlayerWalletFilter] = useState('')
+  const [banningPlayer, setBanningPlayer] = useState<Player | null>(null)
+  const [banReason, setBanReason] = useState<string>('')
 
   useEffect(() => {
     const saved = localStorage.getItem('adminActiveTab')
@@ -368,6 +356,28 @@ export default function AdminPage() {
       setSpiritSort(key)
       setSpiritSortDir('asc')
     }
+  }
+
+  const handleBanPlayer = async () => {
+    if (!banningPlayer) return
+
+    await fetch(`/api/admin/players/${banningPlayer.id}/ban`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: banReason }),
+    })
+
+    loadPlayers()
+    setBanningPlayer(null)
+    setBanReason('')
+  }
+
+  const handleUnbanPlayer = async (playerId: string) => {
+    await fetch(`/api/admin/players/${playerId}/ban`, {
+      method: 'DELETE',
+    })
+
+    loadPlayers()
   }
 
   return (
@@ -900,35 +910,83 @@ export default function AdminPage() {
               </form>
             )}
 
-            <button
-              onClick={() => setShowPlayerFilters(!showPlayerFilters)}
-              className="mb-2 px-2 py-1 bg-gray-500 text-white rounded text-xs"
-            >
-              {showPlayerFilters ? 'Скрыть фильтры' : 'Показать фильтры'}
-            </button>
+            {banningPlayer && (
+              <div className="mb-6 p-4 bg-white rounded shadow">
+                <h2 className="text-xl font-bold mb-4">
+                  Забанить игрока: {banningPlayer.telegramId || banningPlayer.walletAddress || banningPlayer.id}
+                </h2>
+                <div className="mb-4">
+                  <input
+                    type="text"
+                    value={banReason}
+                    onChange={(e) => setBanReason(e.target.value)}
+                    placeholder="Причина бана (опционально)"
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleBanPlayer}
+                    className="px-4 py-2 bg-red-500 text-white rounded"
+                  >
+                    Забанить
+                  </button>
+                  <button
+                    onClick={() => {
+                      setBanningPlayer(null)
+                      setBanReason('')
+                    }}
+                    className="px-4 py-2 bg-gray-500 text-white rounded"
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </div>
+            )}
 
-            {showPlayerFilters && (
-              <div className="mb-4 p-3 bg-white rounded shadow">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium mb-1">Telegram ID</label>
-                    <input
-                      type="text"
-                      placeholder="Фильтр..."
-                      value={playerTelegramFilter}
-                      onChange={(e) => setPlayerTelegramFilter(e.target.value)}
-                      className="w-full p-1 border rounded text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium mb-1">Кошелёк</label>
-                    <input
-                      type="text"
-                      placeholder="Фильтр..."
-                      value={playerWalletFilter}
-                      onChange={(e) => setPlayerWalletFilter(e.target.value)}
-                      className="w-full p-1 border rounded text-sm"
-                    />
+            <div className="space-y-4">
+              {players.map((player) => (
+                <div
+                  key={player.id}
+                  className={`p-4 rounded shadow ${player.isBanned ? 'bg-red-50 border-2 border-red-300' : 'bg-white'}`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-bold">
+                        {player.telegramId || player.walletAddress || player.id}
+                        {player.isBanned && (
+                          <span className="ml-2 px-2 py-1 bg-red-500 text-white text-xs rounded">
+                            ЗАБАНЕН
+                          </span>
+                        )}
+                      </h3>
+                      <p className="text-sm text-gray-600">ID: {player.id}</p>
+                      {player.isBanned && player.banReason && (
+                        <p className="text-sm text-red-600 mt-1">Причина: {player.banReason}</p>
+                      )}
+                      {player.isBanned && player.bannedAt && (
+                        <p className="text-xs text-gray-500">
+                          Дата бана: {new Date(player.bannedAt).toLocaleString('ru-RU')}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      {player.isBanned ? (
+                        <button
+                          onClick={() => handleUnbanPlayer(player.id)}
+                          className="px-3 py-1 bg-green-500 text-white rounded text-sm"
+                        >
+                          Разбанить
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setBanningPlayer(player)}
+                          className="px-3 py-1 bg-red-500 text-white rounded text-sm"
+                        >
+                          Забанить
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
